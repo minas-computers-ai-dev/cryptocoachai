@@ -1,6 +1,6 @@
 # CryptoCoach
 
-A members-only AI agent that teaches crypto basics to beginners in plain English. Built with Next.js, Supabase (registration/login), and the Claude API.
+A members-only AI agent that teaches crypto basics to beginners in plain English. Built with Next.js, Supabase (registration/login), and the Google Gemini API (free tier — no credit card needed).
 
 **Pages:**
 - `/` — public landing page with sign-up call to action
@@ -10,7 +10,7 @@ A members-only AI agent that teaches crypto basics to beginners in plain English
 
 ---
 
-## Setup (about 20 minutes, no coding required)
+## Setup (about 15 minutes, no coding required)
 
 ### Step 1 — Create your Supabase project (handles registration/login)
 
@@ -22,42 +22,52 @@ A members-only AI agent that teaches crypto basics to beginners in plain English
    - **anon public key** (a long string)
 5. Optional but recommended for a smooth pilot: go to **Authentication → Providers → Email** and turn **off** "Confirm email." This lets people sign up and start chatting immediately without an email verification step. (Turn it back on later for a public launch.)
 
-### Step 2 — Get your Anthropic API key (powers the AI)
+### Step 2 — Get your free Gemini API key (powers the AI)
 
-1. Go to [console.anthropic.com](https://console.anthropic.com) and create an account
-2. Add a payment method (usage-based; a pilot with a small community typically costs a few dollars a month)
-3. Go to **API Keys → Create Key** and copy it (starts with `sk-ant-`)
+1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Sign in with your Google account
+3. Click **Create API Key**
+4. Select a Google Cloud project (or let it create one for you)
+5. Copy the API key
 
-### Step 3 — Put the code on GitHub
+That's it — no credit card, no billing setup. The free tier gives you 1,500 requests per day, which is plenty for a community pilot.
+
+### Step 3 — Deploy on Netlify
+
+**Option A — Via GitHub (recommended):**
 
 1. Create a free account at [github.com](https://github.com) if you don't have one
 2. Create a **New repository** (private is fine), name it `cryptocoach`
-3. Upload this project's files:
-   - Easiest no-code way: on your new repo page, click **"uploading an existing file"** and drag all the project files/folders in (don't upload `node_modules` — it isn't included anyway)
-
-### Step 4 — Deploy on Vercel (recommended) 
-
-1. Go to [vercel.com](https://vercel.com) and sign up **with your GitHub account**
-2. Click **Add New → Project** and import your `cryptocoach` repository
-3. Before clicking Deploy, open **Environment Variables** and add these three:
+3. Upload this project's files (drag the contents of the unzipped folder into the GitHub upload area)
+4. Go to [netlify.com](https://netlify.com), sign up with your GitHub account
+5. Click **Add new site → Import an existing project → GitHub**
+6. Select your `cryptocoach` repository
+7. Netlify will auto-detect Next.js. Before clicking Deploy, add these three **environment variables**:
 
    | Name | Value |
    |------|-------|
    | `NEXT_PUBLIC_SUPABASE_URL` | your Supabase Project URL |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your Supabase anon public key |
-   | `ANTHROPIC_API_KEY` | your Anthropic API key |
+   | `GEMINI_API_KEY` | your Gemini API key |
 
-4. Click **Deploy**. In about a minute you'll get a live URL like `cryptocoach.vercel.app`
-5. Visit the URL, create a test account, and ask the agent a question 🎉
+8. Click **Deploy site**. In about 2 minutes you'll get a live URL
+9. Visit the URL, create a test account, and ask the agent a question 🎉
 
-**Custom domain:** in Vercel, go to your project → Settings → Domains to attach one (e.g. `learn.yourbrand.com`).
+**Option B — Netlify CLI (no GitHub needed):**
 
-### Deploying on Netlify instead
+1. Install Node.js from [nodejs.org](https://nodejs.org)
+2. Unzip the folder on your computer, open a terminal, navigate to it
+3. Run:
+   ```
+   npm install
+   npx netlify-cli login
+   npx netlify-cli env:set NEXT_PUBLIC_SUPABASE_URL "https://your-project.supabase.co"
+   npx netlify-cli env:set NEXT_PUBLIC_SUPABASE_ANON_KEY "your-anon-key"
+   npx netlify-cli env:set GEMINI_API_KEY "your-gemini-key"
+   npx netlify-cli deploy --build --prod
+   ```
 
-1. Go to [netlify.com](https://netlify.com), sign up with GitHub
-2. **Add new site → Import an existing project** → choose your repo
-3. Netlify auto-detects Next.js. Add the same three environment variables under **Site settings → Environment variables**
-4. Deploy
+**Custom domain:** in Netlify, go to **Site settings → Domain management → Add custom domain**.
 
 ---
 
@@ -67,14 +77,13 @@ A members-only AI agent that teaches crypto basics to beginners in plain English
 Open `lib/systemPrompt.js`. This file contains everything about how the agent behaves:
 - The name (Minas Bot) and community (Minas Community) are already set
 - **Most important:** review the five frameworks (The Steady Drip, Protection First, The Vault System, The 8-Basket Rule, The Sacred Rule) and adjust the wording to match your teaching style
-- Commit the change on GitHub (edit the file right in the browser) — Vercel/Netlify redeploys automatically.
 
 ### Edit the branding
 - Site name and colors: search for "CryptoCoach" in `app/page.js`, `app/login/page.js`, `app/register/page.js`, `app/chat/page.js`, and `app/layout.js`
 - Colors and fonts: the design tokens at the top of `app/globals.css`
 
 ### Change the AI model
-Set the `ANTHROPIC_MODEL` environment variable (defaults to `claude-sonnet-4-6`, a good balance of quality and cost for this use case).
+Set the `GEMINI_MODEL` environment variable in Netlify. Defaults to `gemini-2.5-flash` (recommended — fast, capable, and free).
 
 ---
 
@@ -82,20 +91,24 @@ Set the `ANTHROPIC_MODEL` environment variable (defaults to `claude-sonnet-4-6`,
 
 | Service | Pilot cost |
 |---------|-----------|
-| Vercel / Netlify | Free tier is plenty |
+| Netlify | Free tier is plenty |
 | Supabase | Free tier is plenty (up to 50,000 monthly active users) |
-| Anthropic API | Usage-based — roughly $0.01–0.03 per conversation exchange; a 50-person pilot typically runs a few dollars/month |
+| Gemini API | **Free** — 1,500 requests/day, no credit card required |
+| **Total** | **$0/month** |
 
 ---
 
 ## Important notes
 
-- **Keys stay secret.** The Anthropic API key lives only on the server (in the `/api/chat` route); it is never exposed to the browser. Never put it in a `NEXT_PUBLIC_` variable.
+- **Keys stay secret.** The Gemini API key lives only on the server (in the `/api/chat` route); it is never exposed to the browser. Never put it in a `NEXT_PUBLIC_` variable.
 - **Disclaimer:** the app displays "educational only — not financial advice" on the landing page and inside the chat. Keep this visible.
+- **Free tier data note:** on Gemini's free tier, Google may use prompts for model improvement. For a community pilot this is fine, but be aware if users share sensitive information. Upgrading to a paid tier disables this.
 - **Local development (optional):** `npm install`, copy `.env.example` to `.env.local` and fill it in, then `npm run dev` and open http://localhost:3000
 
 ## Troubleshooting
 
-- **"Registration isn't configured yet"** — the Supabase environment variables are missing or misspelled. Check them in Vercel/Netlify settings and redeploy.
-- **"The AI service is not configured yet"** — the `ANTHROPIC_API_KEY` variable is missing. Add it and redeploy.
+- **"Registration isn't configured yet"** — the Supabase environment variables are missing or misspelled. Check them in Netlify's Site settings → Environment variables and redeploy.
+- **"The AI service is not configured yet"** — the `GEMINI_API_KEY` variable is missing. Add it in Netlify and redeploy.
+- **"The assistant had trouble answering"** — check your Gemini API key is valid at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Also check Netlify's deploy logs (Deploys → click latest deploy → scroll to function logs) for details.
+- **"The assistant is getting a lot of questions right now"** — you've hit the free tier rate limit (15 requests/minute). Wait a minute and try again. This is normal during heavy testing.
 - **Sign-up says "check your email" but no email arrives** — either disable "Confirm email" in Supabase (Authentication → Providers → Email) for the pilot, or configure a custom SMTP sender in Supabase for reliable delivery.
