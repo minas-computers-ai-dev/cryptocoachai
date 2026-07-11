@@ -466,7 +466,6 @@ button {
   padding: 0.95rem 1.15rem;
   border-radius: var(--radius);
   font-size: 1.05rem;
-  white-space: pre-wrap;
   word-wrap: break-word;
 }
 
@@ -475,6 +474,7 @@ button {
   background: var(--ink);
   color: var(--paper);
   border-bottom-right-radius: 3px;
+  white-space: pre-wrap;
 }
 
 .msg.assistant {
@@ -483,6 +483,79 @@ button {
   border: 1px solid var(--line);
   border-bottom-left-radius: 3px;
   box-shadow: var(--shadow);
+}
+
+/* --- Formatted markdown inside assistant messages --- */
+
+.msg-formatted p {
+  margin: 0 0 0.75rem;
+}
+
+.msg-formatted p:last-child {
+  margin-bottom: 0;
+}
+
+.msg-formatted h2 {
+  font-size: 1.2rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--ink);
+}
+
+.msg-formatted h2:first-child {
+  margin-top: 0;
+}
+
+.msg-formatted h3 {
+  font-size: 1.1rem;
+  margin: 1rem 0 0.4rem;
+  color: var(--ink);
+}
+
+.msg-formatted h3:first-child {
+  margin-top: 0;
+}
+
+.msg-formatted strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.msg-formatted em {
+  font-style: italic;
+}
+
+.msg-formatted ul {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.4rem;
+  list-style: none;
+}
+
+.msg-formatted ul li {
+  position: relative;
+  padding-left: 0.2rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.55;
+}
+
+.msg-formatted ul li::before {
+  content: "•";
+  position: absolute;
+  left: -1.1rem;
+  color: var(--brass);
+  font-weight: 700;
+}
+
+.msg-formatted hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1rem 0;
+}
+
+.msg-formatted code {
+  background: rgba(28, 43, 74, 0.06);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.95em;
 }
 
 .msg.assistant.thinking {

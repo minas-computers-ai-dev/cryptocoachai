@@ -31,6 +31,64 @@ const STARTERS = [
 const SCAM_PROMPT_PREFIX =
   "I want to check if something might be a scam. Here's the situation: ";
 
+// Lightweight markdown → HTML renderer (no dependencies needed)
+function renderMarkdown(text) {
+  let html = text
+    // Escape HTML entities first
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    // Headings: ### heading → <h3>
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+    // Horizontal rules
+    .replace(/^---$/gm, '<hr/>')
+    // Bold: **text**
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic: *text* (but not inside words or list bullets)
+    .replace(/(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)/g, '<em>$1</em>')
+    // Inline code: `text`
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    // Unordered list items: * item or - item
+    .replace(/^[\*\-] (.+)$/gm, '<li>$1</li>')
+    // Numbered list items: 1. item
+    .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+    // Wrap consecutive <li> in <ul>
+    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
+    // Paragraphs: double newlines
+    .replace(/\n\n+/g, '</p><p>')
+    // Single newlines within paragraphs
+    .replace(/\n/g, '<br/>');
+
+  // Wrap in paragraph tags
+  html = '<p>' + html + '</p>';
+
+  // Clean up empty paragraphs and fix nesting
+  html = html
+    .replace(/<p>\s*<\/p>/g, '')
+    .replace(/<p>\s*(<h[23]>)/g, '$1')
+    .replace(/(<\/h[23]>)\s*<\/p>/g, '$1')
+    .replace(/<p>\s*(<hr\/>)/g, '$1')
+    .replace(/(<hr\/>)\s*<\/p>/g, '$1')
+    .replace(/<p>\s*(<ul>)/g, '$1')
+    .replace(/(<\/ul>)\s*<\/p>/g, '$1');
+
+  return html;
+}
+
+function FormattedMessage({ content, role }) {
+  if (role === "user") {
+    return <>{content}</>;
+  }
+  return (
+    <div
+      className="msg-formatted"
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+    />
+  );
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const supabase = getSupabase();
@@ -174,7 +232,7 @@ export default function ChatPage() {
             <div className="messages" aria-live="polite">
               {messages.map((m, i) => (
                 <div key={i} className={`msg ${m.role}`}>
-                  {m.content}
+                  <FormattedMessage content={m.content} role={m.role} />
                 </div>
               ))}
               {sending && (
