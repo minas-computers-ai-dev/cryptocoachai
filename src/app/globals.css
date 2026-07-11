@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* ==========================================================
+   CryptoCoach AI — Baby-Boomer Accessible Design System
+   Base font: 18 px · Buttons/inputs ≥ 52 px · WCAG AAA contrast
+   ========================================================== */
+
+:root {
+  /* Warm, high-contrast palette – dark mode */
+  --primary:       #FFB020;  /* Warm amber – AAA on dark backgrounds */
+  --primary-hover: #FFC44D;
+  --primary-text:  #1A1100;  /* Dark text ON the amber buttons */
+
+  --bg:            #111318;
+  --surface:       #1A1D25;
+  --surface-raised:#242832;
+
+  --text:          #F2F4F7;  /* Pure-ish white – 15.8:1 on --bg */
+  --text-secondary:#C2C7D0;  /* 9.2 :1 on --bg — passes AAA */
+  --text-tertiary: #9BA2AE;  /* 6.1 :1 on --bg — passes AA-large */
+
+  --border:        #3A3F4B;
+  --border-focus:  #FFB020;
+  --focus-ring:    0 0 0 3px rgba(255, 176, 32, 0.55);
+
+  --success:       #34D399;
+  --success-bg:    rgba(52, 211, 153, 0.12);
+  --warning:       #FBBF24;
+  --danger:        #F87171;
+  --danger-bg:     rgba(248, 113, 113, 0.12);
+}
+
+/* ---------- base resets ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-size: 18px;         /* 18 px base */
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---------- focus states (visible keyboard focus for everyone) ---------- */
+
+:focus-visible {
+  outline: 3px solid var(--border-focus) !important;
+  outline-offset: 2px !important;
+  box-shadow: var(--focus-ring) !important;
+  border-radius: 8px;
+}
+
+/* Remove the default focus style for mouse clicks but preserve for keyboard */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---------- scrollbar (wider for easier grabbing) ---------- */
+::-webkit-scrollbar { width: 12px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+  border: 2px solid var(--surface);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* ---------- selection ---------- */
+::selection {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+/* ---------- animations ---------- */
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fade-in-up 0.35s ease-out forwards; }
+
+@keyframes pulse-dot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1; }
+}
+
+/* ---------- chat message markdown ---------- */
+
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+  font-weight: 700;
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
+  color: var(--text);
+}
+.message-content h1 { font-size: 1.35rem; }
+.message-content h2 { font-size: 1.2rem;  }
+.message-content h3 { font-size: 1.1rem;  }
+
+.message-content p { margin-bottom: 0.6em; line-height: 1.7; }
+
+.message-content ul,
+.message-content ol {
+  margin-left: 1.6em;
+  margin-bottom: 0.75em;
+}
+.message-content li { margin-bottom: 0.35em; line-height: 1.6; }
+
+.message-content strong {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.message-content code {
+  background: var(--surface-raised);
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 0.9em;
+}
