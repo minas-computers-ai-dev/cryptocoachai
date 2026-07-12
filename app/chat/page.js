@@ -1,277 +1,123 @@
 "use client";
-
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 
-const STARTERS = [
-  {
-    label: "What is cryptocurrency?",
-    sub: "A plain-English explanation of the basics",
-    prompt: "What is cryptocurrency? Please explain it to me like I'm brand new to this.",
-  },
-  {
-    label: "How do I stay safe?",
-    sub: "The most important security rules first",
-    prompt: "What are the most important things I should do to stay safe with crypto before I do anything else?",
-  },
-  {
-    label: "What is a crypto wallet?",
-    sub: "Where crypto is actually stored",
-    prompt: "What is a crypto wallet and how does it work?",
-  },
-  {
-    label: "What is an exchange?",
-    sub: "Where people buy and sell crypto",
-    prompt: "What is a crypto exchange, and how do I know if one is trustworthy?",
-  },
+const QUICK_TOPICS = [
+  { emoji: "🪙", label: "What is cryptocurrency?" },
+  { emoji: "💰", label: "How do I buy my first Bitcoin?" },
+  { emoji: "🔐", label: "What is a crypto wallet?" },
+  { emoji: "⚠️", label: "How do I spot a crypto scam?" },
+  { emoji: "🛡️", label: "What are the top security rules?" },
+  { emoji: "📊", label: "What is blockchain?" },
 ];
 
-const SCAM_PROMPT_PREFIX =
-  "I want to check if something might be a scam. Here's the situation: ";
-
-// Lightweight markdown → HTML renderer (no dependencies needed)
-function renderMarkdown(text) {
-  let html = text
-    // Escape HTML entities first
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    // Headings: ### heading → <h3>
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-    // Horizontal rules
-    .replace(/^---$/gm, '<hr/>')
-    // Bold: **text**
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Italic: *text* (but not inside words or list bullets)
-    .replace(/(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)/g, '<em>$1</em>')
-    // Inline code: `text`
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    // Unordered list items: * item or - item
-    .replace(/^[\*\-] (.+)$/gm, '<li>$1</li>')
-    // Numbered list items: 1. item
-    .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
-    // Wrap consecutive <li> in <ul>
-    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
-    // Paragraphs: double newlines
-    .replace(/\n\n+/g, '</p><p>')
-    // Single newlines within paragraphs
-    .replace(/\n/g, '<br/>');
-
-  // Wrap in paragraph tags
-  html = '<p>' + html + '</p>';
-
-  // Clean up empty paragraphs and fix nesting
-  html = html
-    .replace(/<p>\s*<\/p>/g, '')
-    .replace(/<p>\s*(<h[23]>)/g, '$1')
-    .replace(/(<\/h[23]>)\s*<\/p>/g, '$1')
-    .replace(/<p>\s*(<hr\/>)/g, '$1')
-    .replace(/(<hr\/>)\s*<\/p>/g, '$1')
-    .replace(/<p>\s*(<ul>)/g, '$1')
-    .replace(/(<\/ul>)\s*<\/p>/g, '$1');
-
-  return html;
-}
-
-function FormattedMessage({ content, role }) {
-  if (role === "user") {
-    return <>{content}</>;
-  }
-  return (
-    <div
-      className="msg-formatted"
-      dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-    />
-  );
-}
-
-export default function ChatPage() {
+export default function DashboardPage() {
   const router = useRouter();
   const supabase = getSupabase();
-
-  const [checkingAuth, setCheckingAuth] = useState(true);
   const [userName, setUserName] = useState("");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState(null);
+  const [chatError, setChatError] = useState("");
+  const chatContainerRef = useRef(null);
+  const inputRef = useRef(null);
 
-  const scrollRef = useRef(null);
-  const textareaRef = useRef(null);
+  const scrollToBottom = useCallback(() => { if (chatContainerRef.current) chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight; }, []);
+  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  // Auth guard
   useEffect(() => {
-    if (!supabase) {
-      setCheckingAuth(false);
-      return;
-    }
+    if (!supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        router.replace("/login");
-      } else {
-        const meta = data.session.user.user_metadata || {};
-        setUserName(meta.full_name || "");
-        setCheckingAuth(false);
-      }
+      if (!data.session) { router.replace("/login"); return; }
+      setUserName(data.session.user.user_metadata?.full_name || "");
+      setLoading(false);
     });
   }, [supabase, router]);
 
-  // Auto-scroll to the newest message
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, sending]);
+  const handleLogout = async () => { if (supabase) await supabase.auth.signOut(); router.replace("/"); };
 
-  async function sendMessage(text) {
-    const trimmed = text.trim();
-    if (!trimmed || sending) return;
-
-    setError(null);
-    const nextMessages = [...messages, { role: "user", content: trimmed }];
+  const sendMessage = async (messageText) => {
+    const text = messageText || input.trim();
+    if (!text || sending) return;
+    setInput(""); setSending(true); setChatError("");
+    const nextMessages = [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
-    setInput("");
-    setSending(true);
-
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages }),
-      });
-
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: nextMessages }) });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send message");
+      setMessages([...nextMessages, { role: "assistant", content: data.reply }]);
+    } catch (err) {
+      setMessages((prev) => prev.slice(0, -1));
+      setChatError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally { setSending(false); inputRef.current?.focus(); }
+  };
 
-      if (!res.ok) {
-        setError(data.error || "Something went wrong. Please try again.");
-      } else {
-        setMessages([...nextMessages, { role: "assistant", content: data.reply }]);
-      }
-    } catch {
-      setError("We couldn't reach the assistant. Please check your connection and try again.");
-    } finally {
-      setSending(false);
-    }
-  }
+  const handleKeyDown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    sendMessage(input);
-  }
+  const formatMessage = (content) => {
+    const formatted = content.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-bold">$1</strong>').replace(/\*(.*?)\*/g, "<em>$1</em>").replace(/`(.*?)`/g, '<code class="bg-purple-900/50 px-1.5 py-0.5 rounded text-yellow-300 text-base">$1</code>').replace(/^- (.*)/gm, "• $1").replace(/^(\d+)\. /gm, "$1. ");
+    return formatted.split("\n").map((line, i) => (<span key={i}><span dangerouslySetInnerHTML={{ __html: line }} />{i < content.split("\n").length - 1 && <br />}</span>));
+  };
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(input);
-    }
-  }
-
-  function handleScamCheck() {
-    setInput(SCAM_PROMPT_PREFIX);
-    textareaRef.current?.focus();
-  }
-
-  async function handleSignOut() {
-    if (supabase) await supabase.auth.signOut();
-    router.replace("/");
-  }
-
-  if (checkingAuth) {
-    return <div className="chat-loading">Getting things ready…</div>;
-  }
+  if (loading) return (<div className="min-h-screen bg-[#0c0a1a] flex items-center justify-center px-5"><div className="flex flex-col items-center gap-4 text-slate-300"><svg className="animate-spin w-10 h-10 text-purple-400" viewBox="0 0 24 24" aria-hidden="true"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg><p className="text-xl font-semibold">Loading your dashboard…</p></div></div>);
 
   return (
-    <div className="chat-shell">
-      <header className="site-header">
-        <div className="container">
-          <Link href="/" className="brand">
-            <span className="brand-mark" aria-hidden="true">₿</span>
-            CryptoCoach
-          </Link>
-          <nav className="header-nav">
-            <button className="btn-quiet" onClick={handleSignOut}>
-              Sign out
-            </button>
-          </nav>
+    <div className="min-h-screen bg-[#0c0a1a] flex flex-col">
+      <header className="bg-[#110e20] border-b-2 border-purple-800/40 sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <Link href="/" className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20" aria-label="Home"><span className="text-lg sm:text-2xl">👑</span></Link>
+            <div className="min-w-0"><h1 className="text-base sm:text-xl font-bold text-white truncate">MinasCoach</h1><p className="text-xs sm:text-sm text-slate-400 truncate">Hi, {userName || "there"}</p></div>
+          </div>
+          <button onClick={handleLogout} className="bg-purple-900/40 hover:bg-purple-800/50 text-slate-200 font-semibold text-sm sm:text-base px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl border-2 border-purple-700/40 transition-colors flex-shrink-0" style={{ minHeight: "44px" }}>Log Out</button>
         </div>
       </header>
 
-      <main className="chat-main" ref={scrollRef}>
-        <div className="container">
+      <div className="flex-1 max-w-4xl mx-auto w-full flex flex-col px-3 sm:px-6 py-3 sm:py-6">
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto chat-container space-y-4 sm:space-y-5 pb-4" role="log" aria-label="Chat messages" aria-live="polite">
           {messages.length === 0 ? (
-            <div className="chat-welcome">
-              <h1>{userName ? `Hi ${userName}, what would you like to learn?` : "What would you like to learn?"}</h1>
-              <p>
-                Ask me anything about cryptocurrency — there are no silly
-                questions here. Or pick a starting point below.
-              </p>
-              <div className="starter-grid">
-                <button className="starter-card scam-check" onClick={handleScamCheck}>
-                  <span className="starter-label">🛡️ Is this a scam?</span>
-                  <span className="starter-sub">
-                    Describe a message, offer, or situation and I&apos;ll help you evaluate it
-                  </span>
-                </button>
-                {STARTERS.map((s) => (
-                  <button
-                    key={s.label}
-                    className="starter-card"
-                    onClick={() => sendMessage(s.prompt)}
-                  >
-                    <span className="starter-label">{s.label}</span>
-                    <span className="starter-sub">{s.sub}</span>
-                  </button>
-                ))}
+            <div className="h-full flex flex-col items-center justify-center text-center px-2 py-6 sm:py-8">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center mb-6 sm:mb-8 shadow-xl shadow-purple-500/20" aria-hidden="true"><span className="text-4xl sm:text-5xl">👑</span></div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3 sm:mb-4">Welcome, {userName || "there"}!</h2>
+              <p className="text-base sm:text-xl text-slate-300 mb-8 sm:mb-10 max-w-md leading-relaxed">I&apos;m here to help you understand cryptocurrency in plain English. Ask me anything — no question is too basic!</p>
+              <div className="w-full max-w-lg">
+                <p className="text-base text-slate-400 mb-4 font-semibold">Tap a topic to get started:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {QUICK_TOPICS.map((topic, i) => (<button key={i} onClick={() => sendMessage(topic.label)} className="bg-[#110e20] hover:bg-purple-950/60 border-2 border-purple-800/40 hover:border-purple-600/60 rounded-xl px-4 sm:px-5 text-left text-base text-slate-200 transition-all flex items-center gap-3 font-medium" style={{ minHeight: "56px" }}><span className="text-xl sm:text-2xl flex-shrink-0" aria-hidden="true">{topic.emoji}</span><span>{topic.label}</span></button>))}
+                </div>
               </div>
             </div>
           ) : (
-            <div className="messages" aria-live="polite">
-              {messages.map((m, i) => (
-                <div key={i} className={`msg ${m.role}`}>
-                  <FormattedMessage content={m.content} role={m.role} />
+            messages.map((message, i) => (
+              <div key={i} className={`flex gap-2.5 sm:gap-4 message-appear ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                {message.role === "assistant" && (<div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center flex-shrink-0 shadow-md shadow-purple-500/15" aria-hidden="true"><span className="text-lg sm:text-2xl">👑</span></div>)}
+                <div className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-4 sm:px-6 py-3 sm:py-4 ${message.role === "user" ? "bg-yellow-500 text-[#0c0a1a]" : "bg-[#110e20] text-slate-200 border-2 border-purple-800/40"}`}>
+                  <div className={`text-base sm:text-lg leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "font-semibold" : ""}`}>{message.role === "assistant" ? formatMessage(message.content) : message.content}</div>
                 </div>
-              ))}
-              {sending && (
-                <div className="msg assistant thinking">Thinking about your question…</div>
-              )}
-              {error && <div className="msg-error" role="alert">{error}</div>}
-            </div>
+                {message.role === "user" && (<div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-purple-900/50 flex items-center justify-center flex-shrink-0" aria-hidden="true"><span className="text-lg sm:text-2xl">👤</span></div>)}
+              </div>
+            ))
           )}
+          {sending && (<div className="flex gap-2.5 sm:gap-4 message-appear" aria-label="MinasCoach is thinking…"><div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center flex-shrink-0" aria-hidden="true"><span className="text-lg sm:text-2xl">👑</span></div><div className="bg-[#110e20] border-2 border-purple-800/40 rounded-2xl px-5 sm:px-6 py-3 sm:py-4 flex items-center"><div className="flex gap-2"><div className="w-3 h-3 rounded-full bg-purple-400 typing-dot" /><div className="w-3 h-3 rounded-full bg-purple-400 typing-dot" /><div className="w-3 h-3 rounded-full bg-purple-400 typing-dot" /></div><span className="ml-4 text-base text-slate-400">Thinking…</span></div></div>)}
         </div>
-      </main>
 
-      <div className="chat-composer">
-        <div className="container">
-          <form onSubmit={handleSubmit}>
-            <div className="composer-row">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type your question here…"
-                aria-label="Type your question"
-                rows={2}
-              />
-              <button type="submit" className="btn btn-primary" disabled={sending || !input.trim()}>
-                {sending ? "Sending…" : "Send"}
-              </button>
-            </div>
-          </form>
-          <div className="composer-tools">
-            {messages.length > 0 && (
-              <button className="scam-quick-btn" onClick={handleScamCheck}>
-                🛡️ Is this a scam?
-              </button>
-            )}
-            <p className="composer-note">
-              Educational only — not financial advice. For investment decisions,
-              talk to a licensed professional.
-            </p>
+        {chatError && (<div className="bg-red-900/40 border-2 border-red-500 rounded-xl p-4 mb-3 text-red-200 text-base font-medium" role="alert"><span className="font-bold">⚠ Error:&ensp;</span>{chatError}</div>)}
+
+        <div className="bg-[#110e20] border-2 border-purple-800/40 rounded-2xl p-3 sm:p-5 mt-3">
+          <div className="flex gap-2.5 sm:gap-4 items-end">
+            <label htmlFor="chat-input" className="sr-only">Type your question about crypto</label>
+            <textarea ref={inputRef} id="chat-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your question here…" rows={2} className="flex-1 bg-[#0c0a1a] border-2 border-purple-700/40 rounded-xl px-4 sm:px-5 py-3 text-base sm:text-lg text-white placeholder-slate-500 resize-none transition-colors hover:border-purple-600/60" style={{ minHeight: "56px", maxHeight: "160px" }} disabled={sending} />
+            <button onClick={() => sendMessage()} disabled={!input.trim() || sending} className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-[#0c0a1a] font-bold rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 px-4 sm:px-7" style={{ minHeight: "56px" }} aria-label="Send message">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+              <span className="hidden sm:inline text-lg">Send</span>
+            </button>
+          </div>
+          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t-2 border-purple-800/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <p className="text-xs sm:text-sm text-slate-400 font-medium">⚠️ Educational information only — not financial advice</p>
           </div>
         </div>
       </div>
