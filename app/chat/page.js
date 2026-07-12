@@ -161,22 +161,23 @@ export default function DashboardPage() {
 
         {/* Error */}
         {chatError && (
-          <div className="bg-red-900/40 border-2 border-red-500 rounded-xl p-3 sm:p-4 mb-3 text-red-200 text-sm sm:text-base font-medium" role="alert">
+          <div className="bg-red-900/40 border-2 border-red-500 rounded-xl p-3 sm:p-4 mb-2 text-red-200 text-sm sm:text-base font-medium" role="alert">
             <span className="font-bold">⚠ Error:&ensp;</span>{chatError}
           </div>
         )}
 
-        {/* ── Input ── */}
-        <div className="bg-[#110e20] border-2 border-purple-800/40 rounded-2xl p-3 sm:p-4 mt-2 sm:mt-3">
-          <div className="flex gap-2.5 sm:gap-3 items-stretch">
+        {/* ── Input — WhatsApp / Telegram style ── */}
+        <div className="pb-2 pt-2 sm:pt-3 flex-shrink-0">
+          <div className="flex items-end gap-2 sm:gap-2.5">
             <label htmlFor="chat-input" className="sr-only">Type your question about crypto</label>
-            <textarea ref={inputRef} id="chat-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your question here…" rows={2} className="flex-1 bg-[#0c0a1a] border-2 border-purple-700/40 rounded-xl px-3.5 sm:px-5 py-2.5 sm:py-3 text-sm sm:text-base text-white placeholder-slate-500 resize-none transition-colors hover:border-purple-600/60 focus-visible:border-purple-500" style={{ minHeight: "48px", maxHeight: "140px" }} disabled={sending} />
-            <button onClick={() => sendMessage()} disabled={!input.trim() || sending} className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-[#0c0a1a] font-bold rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 px-4 sm:px-6" aria-label="Send message">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
-              <span className="hidden sm:inline text-base font-bold">Send</span>
+            <div className="flex-1 bg-[#1a1630] border border-purple-700/30 rounded-3xl px-4 sm:px-5 py-2 flex items-end min-h-[44px] sm:min-h-[48px]">
+              <textarea ref={inputRef} id="chat-input" value={input} onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }} onKeyDown={handleKeyDown} placeholder="Type a message…" rows={1} className="flex-1 bg-transparent text-sm sm:text-base text-white placeholder-slate-500 resize-none outline-none leading-relaxed py-0.5" style={{ minHeight: "24px", maxHeight: "120px" }} disabled={sending} />
+            </div>
+            <button onClick={() => sendMessage()} disabled={!input.trim() || sending} className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-[#0c0a1a] flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 shadow-lg shadow-yellow-500/20" aria-label="Send message">
+              <svg className="w-5 h-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
             </button>
           </div>
-          <p className="text-[10px] sm:text-xs text-slate-500 text-center mt-2.5 sm:mt-3 pt-2.5 sm:pt-3 border-t-2 border-purple-800/30 font-medium">⚠️ Educational information only — not financial advice</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-600 text-center mt-1.5 select-none">Educational only — not financial advice</p>
         </div>
       </div>
     </div>
